@@ -105,8 +105,8 @@
 
         #developer {
             position: absolute;
-            bottom: 2px;
-            left: 0px;
+            bottom: 5px; /* Un poco más de margen abajo */
+            left: 0; /* IMPORTANTE: Asegura que empiece desde el borde izquierdo */
             color: #757575;
             font-size: 10px;
             text-align: center;
@@ -166,7 +166,7 @@
             </div>
             
             <button id="start-btn" class="btn">JUGAR</button>
-            <div id="developer">by: jmanuel07@gmail.com</div>
+            <div id="developer">by: pompalynetworks@gmail.com</div>
         </div>
 
         <div id="game-over-screen" class="ui-layer hidden">
@@ -179,7 +179,7 @@
             <div id="jump-btn" class="control-btn" style="margin-left: auto;">⬆️</div>
         </div>
 
-        <div id="controls-hint">PC: Espacio / Móvil: Botones</div>        
+        <div id="controls-hint">PC: Espacio / Móvil: Botones</div>
     </div>
 
     <script>
@@ -210,6 +210,7 @@
 
         // --- IMAGE HANDLING ---
         const pompoImg = new Image();
+        
         let currentImageSrc = defaultPompoBase64; 
 
         // Chequear si ya tenemos una imagen guardada en localStorage (opcional)
@@ -223,7 +224,7 @@
 
         pompoImg.onload = function() {
             resize();
-            // Establecer la posición Y correcta INMEDIATAMENTE al cargar la imagen
+            // CORRECCIÓN: Establecer la posición Y correcta INMEDIATAMENTE al cargar la imagen
             // Esto evita que se dibuje en (0,0) antes de saber dónde está el suelo
             player.y = canvas.height - GROUND_HEIGHT - 51; 
             
@@ -322,6 +323,78 @@
                 }
             }
         };
+
+        // --- COLLECTIBLES (Botellas de Bacardí - Dibujadas con código) ---
+        let collectibles = [];
+        class Collectible {
+            constructor() {
+                this.x = canvas.width;
+                this.w = 20; // Ancho botella
+                this.h = 30; // Alto botella
+                this.markedForDeletion = false;
+                
+                // Alturas de spawn: Suelo, Salto bajo, Salto alto
+                const heights = [0, 40, 80];
+                const yOffset = heights[Math.floor(Math.random() * heights.length)];
+                this.y = canvas.height - GROUND_HEIGHT - this.h - yOffset;
+            }
+            update() {
+                this.x -= GAME_SPEED * speedMultiplier;
+                if (this.x + this.w < 0) this.markedForDeletion = true;
+            }
+            draw() {
+                ctx.save();
+                
+                // Color del vidrio (Verde suave/Agua como la botella de Bacardí Blanco)
+                const glassColor = "rgba(200, 240, 230, 0.9)"; 
+                
+                // 1. Cuerpo de la botella
+                ctx.fillStyle = glassColor;
+                ctx.fillRect(this.x, this.y + 10, this.w, this.h - 10);
+                
+                // 2. Hombros
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + 10);
+                ctx.lineTo(this.x + 6, this.y); // Hacia el cuello
+                ctx.lineTo(this.x + this.w - 6, this.y);
+                ctx.lineTo(this.x + this.w, this.y + 10);
+                ctx.fill();
+                
+                // 3. Cuello
+                ctx.fillStyle = glassColor;
+                ctx.fillRect(this.x + 6, this.y - 5, this.w - 12, 10);
+                
+                // 4. Tapa (Plateada)
+                ctx.fillStyle = "#E0E0E0"; 
+                ctx.fillRect(this.x + 6, this.y - 5, this.w - 12, 5);
+                ctx.fillStyle = "#A0A0A0"; 
+                ctx.fillRect(this.x + 6, this.y - 2, this.w - 12, 1);
+
+                // 5. Etiqueta (Blanca)
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(this.x + 2, this.y + 12, this.w - 4, 12);
+                
+                // 6. Logo del Murciélago (Círculo rojo)
+                ctx.fillStyle = "#D40000"; 
+                ctx.beginPath();
+                ctx.arc(this.x + this.w/2, this.y + 16, 3.5, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Detalle negro (murciélago simplificado)
+                ctx.fillStyle = "#000";
+                ctx.fillRect(this.x + this.w/2 - 2, this.y + 15, 4, 2);
+
+                // 7. Texto "BACARDI" (Línea negra)
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(this.x + 3, this.y + 20, this.w - 6, 2); 
+
+                // 8. Brillo
+                ctx.fillStyle = "rgba(255,255,255, 0.6)";
+                ctx.fillRect(this.x + this.w - 3, this.y + 10, 2, this.h - 12);
+
+                ctx.restore();
+            }
+        }
 
         // Obstacles
         let obstacles = [];
@@ -425,12 +498,42 @@
             ctx.lineTo(canvas.width, canvas.height - GROUND_HEIGHT);
             ctx.strokeStyle = "#535353"; ctx.lineWidth = 2; ctx.stroke();
 
-            // Spawn
+            // Spawn Obstacles
             let spawnRate = Math.floor(100 / speedMultiplier);
             if (spawnRate < 40) spawnRate = 40;
             if (frame % spawnRate === 0 && Math.random() > 0.3) obstacles.push(new Obstacle());
 
-            // Update
+            // Spawn Collectibles (Botellas) - MÁS FRECUENTES (cada 90 frames)
+            if (frame > 20 && frame % 90 === 0) {
+                collectibles.push(new Collectible());
+            }
+
+            // Update & Draw Collectibles
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                let bottle = collectibles[i];
+                bottle.update();
+                bottle.draw();
+
+                // Detección de colisión simple (Caja) para botellas
+                let pW = player.crouching && player.grounded ? player.crouchWidth : player.width;
+                let pH = player.crouching && player.grounded ? player.crouchHeight : player.height;
+                let pY = player.y + (player.crouching && player.grounded ? 15 : 0);
+                
+                if (
+                    player.x < bottle.x + bottle.w &&
+                    player.x + pW > bottle.x &&
+                    pY < bottle.y + bottle.h &&
+                    pY + pH > bottle.y
+                ) {
+                    // ¡Botella recogida!
+                    score += 100; // Sumar puntos extra
+                    bottle.markedForDeletion = true;
+                }
+
+                if (bottle.markedForDeletion) collectibles.splice(i, 1);
+            }
+
+            // Update & Draw Obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 let obs = obstacles[i];
                 obs.update();
@@ -469,7 +572,12 @@
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
             document.getElementById('mobile-controls').style.display = 'flex';
-            isPlaying = true; score = 0; frame = 0; speedMultiplier = 1; obstacles = [];
+            isPlaying = true; 
+            score = 0; 
+            frame = 0; 
+            speedMultiplier = 1; 
+            obstacles = [];
+            collectibles = []; // Reiniciar botellas
             player.y = canvas.height - GROUND_HEIGHT - player.height;
             animate();
         }
