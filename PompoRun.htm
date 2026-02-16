@@ -103,6 +103,19 @@
             font-weight: bold;
         }
 
+        #developer {
+            position: absolute;
+            bottom: 2px;
+            left: 0px;
+            color: #757575;
+            font-size: 10px;
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+            opacity: 0.7;
+            font-weight: bold;
+        }
+
         #mobile-controls {
             position: absolute;
             bottom: 30px;
@@ -153,6 +166,7 @@
             </div>
             
             <button id="start-btn" class="btn">JUGAR</button>
+            <div id="developer">by: jmanuel07@gmail.com</div>
         </div>
 
         <div id="game-over-screen" class="ui-layer hidden">
@@ -165,7 +179,7 @@
             <div id="jump-btn" class="control-btn" style="margin-left: auto;">⬆️</div>
         </div>
 
-        <div id="controls-hint">PC: Espacio / Móvil: Botones</div>
+        <div id="controls-hint">PC: Espacio / Móvil: Botones</div>        
     </div>
 
     <script>
@@ -209,7 +223,7 @@
 
         pompoImg.onload = function() {
             resize();
-            // CORRECCIÓN: Establecer la posición Y correcta INMEDIATAMENTE al cargar la imagen
+            // Establecer la posición Y correcta INMEDIATAMENTE al cargar la imagen
             // Esto evita que se dibuje en (0,0) antes de saber dónde está el suelo
             player.y = canvas.height - GROUND_HEIGHT - 51; 
             
